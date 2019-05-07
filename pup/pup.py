@@ -19,11 +19,15 @@ import ssl
 logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
 
 
+# TODO: Finish install_update() function
+# TODO: Refactor
+# TODO: Add Time stamp info
+
 def install_update():
 
-    okay = 100
-    command = ["sudo", "dnf", "upgrade", "-y"]
-    installUpdate = subprocess.Popen(command, stdin=PIPE,)
+    okay = 0
+    command = ["dnf", "upgrade", "-y"]
+    installUpdate = subprocess.run(command, text=True, capture_output=True)
 
     logging.info("Installing updates..")
     if installUpdate.returncode is not okay:
@@ -130,7 +134,7 @@ def send_email():
 
 
 def main():
-    """
+
     logging.info("Running fetch_update() function")
     if fetch_update():
         logging.info("Running install_update() function")
@@ -144,10 +148,6 @@ def main():
     else:
         logging.info("Unable to fetch update. Exiting Program..")
         exit(1)
-    """
-    fetch_update()
-    attachment()
-    send_email()
 
 
 if __name__ == "__main__":
