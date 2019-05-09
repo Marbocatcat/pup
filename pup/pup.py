@@ -5,6 +5,7 @@
 # 3. close program.
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
+from timestamp import timestamp
 from config import credentials
 from email import encoders
 
@@ -13,16 +14,18 @@ import pathlib
 import logging
 import smtplib
 import socket
+import sys
 import ssl
 
 # Logging Configurations
-logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
+log_path = pathlib.Path.home() / "pup_logs"
+error_path = str(log_path) + "/" + timestamp() + ".log"
+logging.basicConfig(filename=error_path, level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
 
 
 # TODO: Finish install_update() function
 # TODO: Refactor
 # TODO: Add Time stamp info
-
 def install_update():
 
     okay = 0
@@ -41,33 +44,38 @@ def install_update():
 
 def fetch_update():
 
-    okay = 100
-    command = ["dnf", "check-upgrade"]
-    fetchUpdate = subprocess.run(command, text=True, capture_output=True)
+    successfull = 100
+    no_update = 0
+    update_log = str(log_path) + "/" + timestamp() + ".txt"
+
+    check_upgrade = ["dnf", "check-upgrade"]
+    fetchUpdate = subprocess.run(check_upgrade, text=True, capture_output=True)
 
     logging.info("Fetching updates..")
-    if fetchUpdate.returncode is not okay:
-        logging.info("Error occured! Exiting Program..")
-        error = f"Unable to fetch update. Error occured! {fetchUpdate.returncode}"
-        logging.info(f"{error}")
-        exit(1)
+    if fetchUpdate.returncode is no_update:
+        logging.info("No updates available. Exiting..")
+        sys.exit(0)
+
+    elif fetchUpdate.returncode is not successfull:
+        error = f"Unable to fetch update. Error: {fetchUpdate.returncode}"
+        logging.info(error)
+        sys.exit(1)
 
     else:
-        logging.info("Updates fetched!")
+        logging.info("Updates successfully fetched!")
         stdout = fetchUpdate.stdout.splitlines()
-        logging.info("Attempting to open and create a text file..")
+        logging.info("Attempting to create update manifest..")
         try:
-            logging.info("Text file created!")
-            with open("textfile.txt", "w") as file:
-                logging.info("Writing updates to text file..")
+            with open(update_log, "w") as file:
+                logging.info("Writing updates to manifest..")
                 for updates in stdout[2:]:
                     logging.info(updates)
                     file.write(updates + "\n")
-            logging.info("Files has been written successfully! Closing function..")
+            logging.info("Manifest created! Closing function..")
             return True
         except OSError as err:
-            logging.info("Error occured! File cannot be opened! Exiting Program..")
-            exit(1)
+            logging.info(f"Error occured! File cannot be opened! Error:{err} Exiting Program..")
+            sys.exit(1)
 
 
 def attachment():
@@ -135,19 +143,20 @@ def send_email():
 
 def main():
 
-    logging.info("Running fetch_update() function")
-    if fetch_update():
-        logging.info("Running install_update() function")
-        install_update()
-        logging.info("Running attachment() function")
-        attachment()
-        logging.info("Running send_email() function")
-        send_email()
-        logging.info("End of script!")
-        exit(0)
-    else:
-        logging.info("Unable to fetch update. Exiting Program..")
-        exit(1)
+    # logging.info("Running fetch_update() function")
+    # if fetch_update():
+    #     logging.info("Running install_update() function")
+    #     install_update()
+    #     logging.info("Running attachment() function")
+    #     attachment()
+    #     logging.info("Running send_email() function")
+    #     send_email()
+    #     logging.info("End of script!")
+    #     exit(0)
+    # else:
+    #     logging.info("Unable to fetch update. Exiting Program..")
+    #     exit(1)
+    fetch_update()
 
 
 if __name__ == "__main__":
