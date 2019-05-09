@@ -8,9 +8,9 @@ from email.mime.base import MIMEBase
 from timestamp import timestamp
 from config import credentials
 from email import encoders
+from pathlib import Path
 
 import subprocess
-import pathlib
 import logging
 import smtplib
 import socket
@@ -18,7 +18,7 @@ import sys
 import ssl
 
 # Logging Configurations
-log_path = pathlib.Path.home() / "pup_logs"
+log_path = Path.home() / "pup_logs"
 error_path = str(log_path) + "/" + timestamp() + ".log"
 logging.basicConfig(filename=error_path, level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
 
@@ -53,18 +53,19 @@ def fetch_update():
 
     logging.info("Fetching updates..")
     if fetchUpdate.returncode is no_update:
-        logging.info("No updates available. Exiting..")
+        logging.info("No updates currently available. Exiting..")
         sys.exit(0)
 
     elif fetchUpdate.returncode is not successfull:
-        error = f"Unable to fetch update. Error: {fetchUpdate.returncode}"
+        error = f"exit({fetchUpdate.returncode})"
         logging.info(error)
         sys.exit(1)
 
     else:
         logging.info("Updates successfully fetched!")
-        stdout = fetchUpdate.stdout.splitlines()
         logging.info("Attempting to create update manifest..")
+
+        stdout = fetchUpdate.stdout.splitlines()
         try:
             with open(update_log, "w") as file:
                 logging.info("Writing updates to manifest..")
@@ -74,7 +75,7 @@ def fetch_update():
             logging.info("Manifest created! Closing function..")
             return True
         except OSError as err:
-            logging.info(f"Error occured! File cannot be opened! Error:{err} Exiting Program..")
+            logging.info(f"exit({err})")
             sys.exit(1)
 
 
@@ -89,7 +90,7 @@ def attachment():
     outer["To"] = receiver_email
     outer["From"] = sender_email
 
-    attachments = pathlib.Path.cwd() / "textfile.txt"
+    attachments = Path.cwd() / "textfile.txt"
 
     logging.info("Checking if attachment path exists..")
     if attachments.exists():
