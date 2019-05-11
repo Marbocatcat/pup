@@ -3,43 +3,42 @@
 # 1. sudo dnf check-upgrade > upgrade_list.txt to be emailed to me.
 # 2. sudo dnf upgrade -y if successfull send an email to me if not send an email with the error.
 # 3. close program.
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from timestamp import timestamp
-from config import credentials
-from email import encoders
-from pathlib import Path
+
 
 import subprocess
 import logging
 import smtplib
-import socket
 import sys
-import ssl
+import os
+
+from email.message import EmailMessage
+from timestamp import timestamp
+from pathlib import Path
+
+
 
 # Logging Configurations
-log_path = Path.home() / "pup_logs"
+log_path = Path("/home/bobcat/pup_logs")
 error_path = str(log_path) + "/" + timestamp() + ".log"
 logging.basicConfig(filename=error_path, level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
 
+# Email & Password
+EMAIL = os.environ.get("EMAIL")
+PASS = os.environ.get("G_PASS")
 
-# TODO: Finish install_update() function
-# TODO: Refactor
-# TODO: Add Time stamp info
+
 def install_update():
 
     okay = 0
     command = ["dnf", "upgrade", "-y"]
     installUpdate = subprocess.run(command, text=True, capture_output=True)
 
-    logging.info("Installing updates..")
+    logging.info("Installing updates")
     if installUpdate.returncode is not okay:
-        logging.info("Error occured! Exiting Program..")
-        error = f"Unable to install update. Error occured! {installUpdate.returncode}"
-        logging.info(f"{error}")
-        exit(1)
+        logging.info(f"Error occured! Exit code: {installUpdate.returncode}")
+        sys.exit(1)
     else:
-        logging.info("Updates has been installed! Exiting function..")
+        logging.info("Updates has been installed! Closing function")
 
 
 def fetch_update():
@@ -51,115 +50,76 @@ def fetch_update():
     check_upgrade = ["dnf", "check-upgrade"]
     fetchUpdate = subprocess.run(check_upgrade, text=True, capture_output=True)
 
-    logging.info("Fetching updates..")
+    logging.info("Checking for updates")
     if fetchUpdate.returncode is no_update:
-        logging.info("No updates currently available. Exiting..")
+        logging.info("No updates currently available. Exiting")
         sys.exit(0)
 
     elif fetchUpdate.returncode is not successfull:
-        error = f"exit({fetchUpdate.returncode})"
-        logging.info(error)
+        logging.info(f"Error occured! Exit code: {fetchUpdate.returncode}")
         sys.exit(1)
 
     else:
+        logging.info("Updates available! Fetching..")
         logging.info("Updates successfully fetched!")
         logging.info("Attempting to create update manifest..")
 
         stdout = fetchUpdate.stdout.splitlines()
         try:
             with open(update_log, "w") as file:
-                logging.info("Writing updates to manifest..")
+                logging.info(f"Creating manifest located in {update_log}")
+
                 for updates in stdout[2:]:
-                    logging.info(updates)
                     file.write(updates + "\n")
-            logging.info("Manifest created! Closing function..")
+
+            logging.info("Finished! Closing function.")
             return True
         except OSError as err:
-            logging.info(f"exit({err})")
+            logging.info(f"Error occured! {err}")
             sys.exit(1)
 
 
-def attachment():
-    logging.info("Composing email message..")
-
-    sender_email = credentials["email"]
-    receiver_email = credentials["email"]
-
-    outer = MIMEMultipart()
-    outer["Subject"] = "Fedora Daily Updates"
-    outer["To"] = receiver_email
-    outer["From"] = sender_email
-
-    attachments = Path.cwd() / "textfile.txt"
-
-    logging.info("Checking if attachment path exists..")
-    if attachments.exists():
-        logging.info("Attachment path exists! Attempting to create attachment payload..")
-        try:
-            with open(str(attachments), "rb") as fp:
-                msg = MIMEBase("application", "octet-stream")
-                msg.set_payload(fp.read())
-                encoders.encode_base64(msg)
-                msg.add_header('Content-Disposition', 'attachment', filename=attachments.name)
-                outer.attach(msg)
-
-                logging.info("Attachments successfully composed! Closing function..")
-                composed = outer.as_string()
-                return composed, sender_email, receiver_email
-        except OSError as err:
-            logging.info("Error occured when trying to compose attachment! Exiting Program..")
-            logging.info(f"{err}")
-            exit(1)
-    else:
-        logging.info(f"{attachments} does not exist! Exiting Program..")
-        exit(1)
-
-
 def send_email():
-    logging.info("Gathering email account information..")
-    port = 465
-    smtp_server = "smtp.gmail.com"
-    compose, sender, receiver = attachment()
-    password = credentials["email_pw"]
 
-    logging.info("Email account information gathered!")
-    context = ssl.create_default_context()
+    logging.info("Preparing Email Message..")
+    msg = EmailMessage()
+    msg["Subject"] = "Update Manifest"
+    msg["To"] = EMAIL
+    msg["From"] = EMAIL
+    msg.set_content("Update Manifest Attached")
+
+    logging.info("Attaching update Manifest..")
+    with open("2019-5-11T13:28:11.txt", "rb") as manifest:
+        attach = manifest.read()
+        file_name = manifest.name
+
+    for part in msg.walk():
+        maintype = part.get_content_maintype()
+        subtype = part.get_content_subtype()
+
+    logging.info("Message attached!")
+    msg.add_attachment(attach, filename=file_name, maintype=maintype, subtype=subtype)
+
+    logging.info("Logging into smtp.gmail.com..")
 
     try:
-        logging.info("Attempting to send email message..")
-        with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-            server.login(sender, password)
-            server.sendmail(sender, receiver, compose)
-            logging.info("Email Successfully Sent!")
-    except smtplib.SMTPConnectError as err:
-        logging.info("Unable to connect to gmail server! Please check your network connection! Closing program..")
-        exit(1)
-    except smtplib.SMTPAuthenticationError as err:
-        logging.info("Username and Password not accepted! Closing Program..")
-        exit(1)
-    except socket.error as err:
-        logging.info("Error occured when trying to send email! Please check your network connection! Closing program")
-        exit(1)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL, PASS)
+
+            logging.info("Sending email")
+            smtp.send_message(msg)
+    except Exception as err:
+        logging.info("An error occured while attempting to send the email message!")
+        logging.info(err)
+        sys.exit(1)
 
 
 def main():
 
-    # logging.info("Running fetch_update() function")
-    # if fetch_update():
-    #     logging.info("Running install_update() function")
-    #     install_update()
-    #     logging.info("Running attachment() function")
-    #     attachment()
-    #     logging.info("Running send_email() function")
-    #     send_email()
-    #     logging.info("End of script!")
-    #     exit(0)
-    # else:
-    #     logging.info("Unable to fetch update. Exiting Program..")
-    #     exit(1)
-    fetch_update()
+    if fetch_update():
+        install_update()
+        send_email()
 
 
 if __name__ == "__main__":
-    logging.info("Running main() method")
     main()
