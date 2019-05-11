@@ -18,8 +18,10 @@ from pathlib import Path
 
 
 # Logging Configurations
-log_path = Path("/home/bobcat/pup_logs")
-error_path = str(log_path) + "/" + timestamp() + ".log"
+log_path = Path("/home/bobcat/pup_logs") / timestamp()
+error_path = str(log_path) + ".log"
+update_log = str(log_path) + ".txt"
+
 logging.basicConfig(filename=error_path, level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Email & Password
@@ -45,7 +47,6 @@ def fetch_update():
 
     successfull = 100
     no_update = 0
-    update_log = str(log_path) + "/" + timestamp() + ".txt"
 
     check_upgrade = ["dnf", "check-upgrade"]
     fetchUpdate = subprocess.run(check_upgrade, text=True, capture_output=True)
@@ -89,7 +90,7 @@ def send_email():
     msg.set_content("Update Manifest Attached")
 
     logging.info("Attaching update Manifest..")
-    with open("2019-5-11T13:28:11.txt", "rb") as manifest:
+    with open(update_log, "rb") as manifest:
         attach = manifest.read()
         file_name = manifest.name
 
