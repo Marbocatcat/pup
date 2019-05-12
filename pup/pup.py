@@ -16,7 +16,6 @@ from timestamp import timestamp
 from pathlib import Path
 
 
-
 # Logging Configurations
 log_path = Path("/home/bobcat/pup_logs") / timestamp()
 error_path = str(log_path) + ".log"
@@ -106,9 +105,9 @@ def send_email():
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL, PASS)
-
-            logging.info("Sending email")
             smtp.send_message(msg)
+
+            logging.info("Email sent!")
     except Exception as err:
         logging.info("An error occured while attempting to send the email message!")
         logging.info(err)
@@ -116,7 +115,6 @@ def send_email():
 
 
 def main():
-
     if fetch_update():
         install_update()
         send_email()
